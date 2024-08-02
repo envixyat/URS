@@ -1,0 +1,202 @@
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 1, 0)
+frame.Position = UDim2.new(1, -200, 0, 0)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BackgroundTransparency = 0.5
+frame.Parent = screenGui
+
+local function createButton(name, position, action)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 0, 50)
+    button.Position = position
+    button.Text = name
+    button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Parent = frame
+    
+    button.MouseButton1Click:Connect(action)
+end
+
+local function makeInvincible()
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.MaxHealth = math.huge
+            humanoid.Health = math.huge
+        end
+    end
+end
+
+local function speedBoost()
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 50
+        end
+    end
+end
+
+local function jumpBoost()
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = 100
+        end
+    end
+end
+
+local function ragdoll()
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+        end
+    end
+end
+
+local function teleportToClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+
+    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (player.Character.HumanoidRootPart.Position - otherPlayer.Character.HumanoidRootPart.Position).magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                closestPlayer = otherPlayer
+            end
+        end
+    end
+
+    if closestPlayer then
+        player.Character.HumanoidRootPart.CFrame = closestPlayer.Character.HumanoidRootPart.CFrame
+    end
+end
+
+local flying = false
+local flightSpeed = 50
+local bodyVelocity
+local bodyGyro
+
+local function toggleFly()
+    local character = player.Character
+    if character then
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            flying = not flying
+            if flying then
+                bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+                bodyVelocity.P = 1250
+                bodyVelocity.Parent = humanoidRootPart
+                
+                bodyGyro = Instance.new("BodyGyro")
+                bodyGyro.CFrame = humanoidRootPart.CFrame
+                bodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+                bodyGyro.P = 3000
+                bodyGyro.Parent = humanoidRootPart
+                
+                character:WaitForChild("Humanoid").PlatformStand = true
+
+                local userInputService = game:GetService("UserInputService")
+                local moveDirection = Vector3.new(0, 0, 0)
+                
+                local function onInput(input, gameProcessed)
+                    if gameProcessed then return end
+                    if input.UserInputType == Enum.UserInputType.Keyboard then
+                        if input.KeyCode == Enum.KeyCode.W then
+                            moveDirection = moveDirection + humanoidRootPart.CFrame.LookVector
+                        elseif input.KeyCode == Enum.KeyCode.S then
+                            moveDirection = moveDirection - humanoidRootPart.CFrame.LookVector
+                        elseif input.KeyCode == Enum.KeyCode.A then
+                            moveDirection = moveDirection - humanoidRootPart.CFrame.RightVector
+                        elseif input.KeyCode == Enum.KeyCode.D then
+                            moveDirection = moveDirection + humanoidRootPart.CFrame.RightVector
+                        elseif input.KeyCode == Enum.KeyCode.Space then
+                            moveDirection = moveDirection + Vector3.new(0, 1, 0)
+                        elseif input.KeyCode == Enum.KeyCode.LeftControl then
+                            moveDirection = moveDirection - Vector3.new(0, 1, 0)
+                        end
+                    end
+                end
+
+                local function onInputEnded(input)
+                    if input.UserInputType == Enum.UserInputType.Keyboard then
+                        if input.KeyCode == Enum.KeyCode.W or input.KeyCode == Enum.KeyCode.S then
+                            moveDirection = moveDirection - humanoidRootPart.CFrame.LookVector
+                        elseif input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.D then
+                            moveDirection = moveDirection - humanoidRootPart.CFrame.RightVector
+                        elseif input.KeyCode == Enum.KeyCode.Space or input.KeyCode == Enum.KeyCode.LeftControl then
+                            moveDirection = moveDirection - Vector3.new(0, 1, 0)
+                        end
+                    end
+                end
+
+                userInputService.InputBegan:Connect(onInput)
+                userInputService.InputEnded:Connect(onInputEnded)
+                
+                while flying do
+                    bodyVelocity.Velocity = moveDirection.unit * flightSpeed
+                    bodyGyro.CFrame = CFrame.new(humanoidRootPart.Position, humanoidRootPart.Position + moveDirection)
+                    wait()
+                end
+
+                bodyVelocity:Destroy()
+                bodyGyro:Destroy()
+                character:WaitForChild("Humanoid").PlatformStand = false
+            end
+        end
+    end
+end
+
+local spinning = false
+local spinSpeed = 100
+
+local function toggleSpin()
+    local character = player.Character
+    if character then
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            spinning = not spinning
+            while spinning do
+                humanoidRootPart.CFrame = humanoidRootPart.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0)
+                wait(0.1)
+            end
+        end
+    end
+end
+
+local function randomSkinColor()
+    local character = player.Character
+    if character then
+        for _, part in ipairs(character:GetChildren()) do
+            if part:IsA("Part") and part.Name ~= "Head" then
+                part.BrickColor = BrickColor.random()
+            end
+        end
+        local head = character:FindFirstChild("Head")
+        if head then
+            head.BrickColor = BrickColor.random()
+        end
+    end
+end
+
+createButton("Invincible", UDim2.new(0, 0, 0, 10), makeInvincible)
+createButton("Speed Boost", UDim2.new(0, 0, 0, 70), speedBoost)
+createButton("Jump Boost", UDim2.new(0, 0, 0, 130), jumpBoost)
+createButton("Ragdoll", UDim2.new(0, 0, 0, 190), ragdoll)
+createButton("Teleport to Closest Player", UDim2.new(0, 0, 0, 250), teleportToClosestPlayer)
+createButton("Fling", UDim2.new(0, 0, 0, 310), toggleFly)
+createButton("Spin", UDim2.new(0, 0, 0, 370), toggleSpin)
+createButton("Random Skin Color", UDim2.new(0, 0, 0, 430), randomSkinColor)
